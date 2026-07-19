@@ -1,0 +1,6 @@
+{
+  "name": "StethoNotes",
+  "description": "Premium Medical EdTech Marketplace for high-quality handwritten notes, flashcards, and exam preparation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
