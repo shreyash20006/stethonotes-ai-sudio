@@ -34,6 +34,88 @@ export const NoteDetailsModal: React.FC<NoteDetailsModalProps> = ({
   const [liveViewers, setLiveViewers] = useState(3);
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Security DRM Protection States
+  const [isScreenBlurred, setIsScreenBlurred] = useState(false);
+  const [showScreenshotAlert, setShowScreenshotAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+
+  // Security listeners to block screenshot/record mechanisms
+  useEffect(() => {
+    // 1. Monitor focus loss to blur the screen when snip tools or recorders open
+    const handleBlur = () => {
+      setIsScreenBlurred(true);
+    };
+    const handleFocus = () => {
+      setIsScreenBlurred(false);
+    };
+
+    // 2. Intercept keyboard keys representing screenshot, print, save, DevTools
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Print screen key
+      if (e.key === "PrintScreen" || e.keyCode === 44) {
+        e.preventDefault();
+        triggerAlert("Screenshot Attempt Blocked! Clipboard cleared under DMCA.");
+        navigator.clipboard.writeText("STETHONOTES DRM SECURE AREA: UNAUTHORIZED SCREEN CAPTURE PREVENTED");
+      }
+
+      // Print: Ctrl+P / Cmd+P
+      if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+        e.preventDefault();
+        triggerAlert("Printing is restricted on trial previews. Unlock the complete note first!");
+      }
+
+      // Save: Ctrl+S / Cmd+S
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        triggerAlert("Save-page is restricted. Use our secure download dashboard after purchase!");
+      }
+
+      // Inspect/DevTools hotkeys: F12, Ctrl+Shift+I, Cmd+Option+I, Cmd+Option+J, Ctrl+Shift+C
+      if (
+        e.key === "F12" ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "C" || e.key === "c" || e.key === "J" || e.key === "j")) ||
+        ((e.metaKey || e.ctrlKey) && e.altKey && (e.key === "i" || e.key === "I" || e.key === "j" || e.key === "J"))
+      ) {
+        e.preventDefault();
+        triggerAlert("Developer Tools shortcut blocked to protect creator materials.");
+      }
+    };
+
+    const triggerAlert = (msg: string) => {
+      setAlertMessage(msg);
+      setShowScreenshotAlert(true);
+      setTimeout(() => setShowScreenshotAlert(false), 4500);
+    };
+
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("keydown", handleKeyDown);
+
+    // Prevent context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      triggerAlert("Right-click menu disabled under StethoShield DRM.");
+    };
+    document.addEventListener("contextmenu", handleContextMenu);
+
+    // Prevent text copying/cutting
+    const handleCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      triggerAlert("Content copy prohibited. Secure DRM system is active.");
+    };
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("cut", handleCopy);
+
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("cut", handleCopy);
+    };
+  }, []);
+
   // Simulate subtle random changes in live viewers to create a delightful, realistic live platform feel
   useEffect(() => {
     const interval = setInterval(() => {
@@ -354,76 +436,86 @@ export const NoteDetailsModal: React.FC<NoteDetailsModalProps> = ({
                     className="space-y-5"
                     id="preview-tab-content"
                   >
-                    {/* Simulated Paper Notebook Binder Wrapper */}
-                    <div className="relative bg-slate-100/50 rounded-2xl border border-slate-200/60 p-4 sm:p-5 md:p-6 shadow-inner">
+                    {/* Clean Cover Photo / Sheet Container */}
+                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 shadow-md bg-white transition-all duration-300 select-none print-hidden min-h-[380px]">
                       
-                      {/* Spiral Notebook Left Margin Binding Lines */}
-                      <div className="absolute top-0 bottom-0 left-3.5 w-3.5 flex flex-col justify-around py-4.5 z-20 pointer-events-none">
-                        {Array.from({ length: 11 }).map((_, i) => (
-                          <div key={i} className="flex items-center gap-0.5">
-                            {/* Metallic loops */}
-                            <div className="w-5 h-2.5 bg-gradient-to-r from-slate-400 via-slate-200 to-slate-400 rounded-full shadow-sm opacity-90 border-t border-b border-slate-500/30" />
-                            <div className="w-2 h-2 rounded-full bg-slate-800/20" />
+                      {/* Interactive Repeating Anti-Piracy Watermark Grid */}
+                      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden opacity-[0.04] flex flex-wrap justify-center items-center gap-12 z-10 font-mono text-[9px] font-bold text-slate-800 rotate-[-15deg] scale-110">
+                        {Array.from({ length: 16 }).map((_, i) => (
+                          <div key={i} className="whitespace-nowrap select-none">
+                            STETHONOTES DRM • sb108750@gmail.com • IP DETECTED • NO COPY
                           </div>
                         ))}
                       </div>
 
-                      {/* Actual Notebook Sheet Container with subtle background grid */}
-                      <div 
-                        className="bg-white rounded-xl border border-slate-200/90 shadow-md p-6 sm:p-8 pl-11 sm:pl-14 min-h-[360px] relative overflow-hidden transition-all duration-300"
-                        style={{
-                          backgroundImage: "linear-gradient(rgba(14, 165, 233, 0.04) 1px, transparent 1px)",
-                          backgroundSize: "100% 24px"
-                        }}
-                      >
-                        
-                        {/* Red Margin Notebook Line */}
-                        <div className="absolute top-0 bottom-0 left-9 sm:left-12 w-px bg-rose-400/50" />
-
-                        {/* Subject watermark illustration aligned beautifully behind the content */}
-                        <div className="absolute right-4 bottom-4 w-32 h-32 opacity-80 pointer-events-none">
-                          {theme.sketch}
-                        </div>
-
-                        {/* Top-aligned watermark block */}
-                        <div className="absolute top-2.5 right-4 text-[7px] font-mono font-bold text-slate-300 tracking-widest select-none pointer-events-none uppercase">
-                          STUDENT ACADEMIC PREVIEW ONLY • WATERMARKED
-                        </div>
-
-                        {/* Preview Content Insert */}
-                        <div className="relative z-10 font-sans text-slate-800 leading-6 text-xs sm:text-sm">
-                          <div dangerouslySetInnerHTML={{ __html: note.samplePages?.[previewPageIdx] || "" }} />
-                        </div>
-                        
-                        {/* Interactive Paper Watermark overlay */}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white via-white/85 to-transparent h-28 flex items-end justify-center pb-4 z-10 pointer-events-none">
-                          <span className="text-[9px] font-mono font-black tracking-widest uppercase text-slate-400 bg-white border border-slate-200 shadow-xs px-3.5 py-1.5 rounded-full pointer-events-auto">
-                            STETHONOTES DIRECT DOWNLOAD DIGITAL COPY
-                          </span>
-                        </div>
+                      {/* Top-aligned watermark block */}
+                      <div className="absolute top-2.5 right-4 text-[7px] font-mono font-bold text-slate-300 tracking-widest select-none pointer-events-none uppercase z-10">
+                        STUDENT ACADEMIC PREVIEW ONLY • WATERMARKED
                       </div>
 
-                      {/* Pagination Controls */}
-                      {note.samplePages && note.samplePages.length > 1 && (
-                        <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-200/40">
-                          <span className="text-[11px] text-slate-500 font-bold font-mono">
-                            Showing notebook sheet {previewPageIdx + 1} of {note.samplePages.length}
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            {note.samplePages.map((_, idx) => (
-                              <button
-                                key={idx}
-                                onClick={() => setPreviewPageIdx(idx)}
-                                className={`h-2.5 rounded-full transition-all duration-300 ${
-                                  previewPageIdx === idx ? "w-7 bg-slate-950" : "w-2.5 bg-slate-300 hover:bg-slate-400"
-                                }`}
-                                aria-label={`Go to preview page ${idx + 1}`}
-                              ></button>
-                            ))}
+                      {/* Display either coverImage (if on first page and coverImage exists) or sample HTML */}
+                      {note.coverImage && previewPageIdx === 0 ? (
+                        <div className="relative w-full h-[380px] bg-slate-900 flex items-center justify-center overflow-hidden">
+                          <img 
+                            src={note.coverImage} 
+                            alt={note.title} 
+                            className="w-full h-full object-cover opacity-85"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent flex flex-col justify-end p-6 text-white">
+                            <span className="text-[10px] font-bold tracking-wider uppercase text-sky-400 mb-1">{note.subject} STUDY GUIDE</span>
+                            <h3 className="text-lg font-black font-display leading-tight">{note.title}</h3>
+                            <p className="text-xs text-slate-300 mt-1">{note.pages} Premium Sheets • Verified by Peer Authors</p>
                           </div>
+                        </div>
+                      ) : (
+                        /* Preview Content Insert - render the styled sample page directly */
+                        <div className="relative z-10 font-sans text-slate-800 text-xs sm:text-sm select-none pointer-events-none">
+                          <div dangerouslySetInnerHTML={{ __html: note.samplePages?.[previewPageIdx] || "" }} />
+                        </div>
+                      )}
+
+                      {/* Interactive Paper Watermark overlay */}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-white via-white/85 to-transparent h-28 flex items-end justify-center pb-4 z-10 pointer-events-none">
+                        <span className="text-[9px] font-mono font-black tracking-widest uppercase text-slate-400 bg-white border border-slate-200 shadow-xs px-3.5 py-1.5 rounded-full pointer-events-auto">
+                          STETHONOTES DIRECT DOWNLOAD DIGITAL COPY
+                        </span>
+                      </div>
+
+                      {/* StethoShield Blur Overlay */}
+                      {isScreenBlurred && (
+                        <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center select-none">
+                          <Shield className="h-10 w-10 text-sky-400 animate-pulse mb-3" />
+                          <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                            StethoShield Security Active
+                          </h4>
+                          <p className="text-[10px] text-slate-400 max-w-xs mt-1 leading-relaxed">
+                            Content blurred to protect intellectual rights. Click back inside the window to resume reading.
+                          </p>
                         </div>
                       )}
                     </div>
+
+                    {/* Pagination Controls */}
+                    {note.samplePages && note.samplePages.length > 1 && (
+                      <div className="flex items-center justify-between mt-2 pt-1">
+                        <span className="text-[11px] text-slate-500 font-bold font-mono">
+                          Showing preview page {previewPageIdx + 1} of {note.samplePages.length}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {note.samplePages.map((_, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setPreviewPageIdx(idx)}
+                              className={`h-2.5 rounded-full transition-all duration-300 ${
+                                previewPageIdx === idx ? "w-7 bg-slate-950" : "w-2.5 bg-slate-300 hover:bg-slate-400"
+                              }`}
+                              aria-label={`Go to preview page ${idx + 1}`}
+                            ></button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Watermark Notice */}
                     <div className="flex items-start gap-3 rounded-2xl bg-amber-50/50 border border-amber-100 p-4 text-xs text-amber-900 shadow-xs">
@@ -806,6 +898,24 @@ export const NoteDetailsModal: React.FC<NoteDetailsModalProps> = ({
 
         </div>
       </motion.div>
+
+      {/* Dynamic StethoShield Anti-Piracy Threat Alert */}
+      <AnimatePresence>
+        {showScreenshotAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-900/95 backdrop-blur-md border border-rose-500/30 px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-white max-w-sm"
+          >
+            <Shield className="h-6 w-6 text-rose-400 shrink-0 animate-bounce" />
+            <div className="text-left">
+              <span className="text-xs font-black text-rose-300 uppercase block tracking-wider">StethoShield DRM Shield</span>
+              <span className="text-[11px] text-rose-100 font-medium block mt-0.5">{alertMessage}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

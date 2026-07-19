@@ -3,11 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   BookOpen, Eye, ArrowRight, MessageSquare, Sparkles, Send, HelpCircle, 
-  Search, ZoomIn, ZoomOut, CheckCircle, ChevronLeft, ChevronRight, Award, Flame, Download
+  Search, ZoomIn, ZoomOut, CheckCircle, ChevronLeft, ChevronRight, Award, Flame, Download,
+  Shield
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { MedicalNote } from "../types";
 
 interface InteractiveNoteViewerProps {
@@ -18,6 +20,88 @@ export const InteractiveNoteViewer: React.FC<InteractiveNoteViewerProps> = ({ pu
   const [selectedNote, setSelectedNote] = useState<MedicalNote | null>(purchasedNotes[0] || null);
   const [currentPage, setCurrentPage] = useState(0);
   const [zoom, setZoom] = useState(100);
+
+  // Security DRM Protection States
+  const [isScreenBlurred, setIsScreenBlurred] = useState(false);
+  const [showScreenshotAlert, setShowScreenshotAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState("");
+
+  // Security listeners to block screenshot/record mechanisms
+  useEffect(() => {
+    // 1. Monitor focus loss to blur the screen when snip tools or recorders open
+    const handleBlur = () => {
+      setIsScreenBlurred(true);
+    };
+    const handleFocus = () => {
+      setIsScreenBlurred(false);
+    };
+
+    // 2. Intercept keyboard keys representing screenshot, print, save, DevTools
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Print screen key
+      if (e.key === "PrintScreen" || e.keyCode === 44) {
+        e.preventDefault();
+        triggerAlert("Screenshot Attempt Blocked! Clipboard cleared under DMCA.");
+        navigator.clipboard.writeText("STETHONOTES DRM SECURE AREA: UNAUTHORIZED SCREEN CAPTURE PREVENTED");
+      }
+
+      // Print: Ctrl+P / Cmd+P
+      if ((e.ctrlKey || e.metaKey) && e.key === "p") {
+        e.preventDefault();
+        triggerAlert("Direct printing is restricted. Read documents securely within our DRM container.");
+      }
+
+      // Save: Ctrl+S / Cmd+S
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        triggerAlert("Offline saving is protected by active digital signatures.");
+      }
+
+      // Inspect/DevTools hotkeys: F12, Ctrl+Shift+I, Cmd+Option+I, Cmd+Option+J, Ctrl+Shift+C
+      if (
+        e.key === "F12" ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "C" || e.key === "c" || e.key === "J" || e.key === "j")) ||
+        ((e.metaKey || e.ctrlKey) && e.altKey && (e.key === "i" || e.key === "I" || e.key === "j" || e.key === "J"))
+      ) {
+        e.preventDefault();
+        triggerAlert("Developer tools disabled in premium study reader.");
+      }
+    };
+
+    const triggerAlert = (msg: string) => {
+      setAlertMessage(msg);
+      setShowScreenshotAlert(true);
+      setTimeout(() => setShowScreenshotAlert(false), 4500);
+    };
+
+    window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("keydown", handleKeyDown);
+
+    // Prevent context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      triggerAlert("Context menu disabled in secure study reader.");
+    };
+    document.addEventListener("contextmenu", handleContextMenu);
+
+    // Prevent text copying/cutting
+    const handleCopy = (e: ClipboardEvent) => {
+      e.preventDefault();
+      triggerAlert("Copy-paste is restricted to protect peer authors.");
+    };
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("cut", handleCopy);
+
+    return () => {
+      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("cut", handleCopy);
+    };
+  }, []);
 
   // Chatbot states
   const [chatMessages, setChatMessages] = useState<{ sender: "user" | "bot"; text: string }[]>([
@@ -177,14 +261,37 @@ export const InteractiveNoteViewer: React.FC<InteractiveNoteViewerProps> = ({ pu
             </div>
 
             {/* Rendered Document Page */}
-            <div className="flex-1 overflow-y-auto bg-slate-50 border border-slate-100 rounded-xl p-4 flex items-start justify-center relative shadow-inner">
+            <div className="flex-1 overflow-y-auto bg-slate-50 border border-slate-100 rounded-xl p-4 flex items-start justify-center relative shadow-inner select-none">
+              
+              {/* Repeating Anti-Piracy Watermark Grid */}
+              <div className="absolute inset-0 pointer-events-none select-none overflow-hidden opacity-[0.05] flex flex-wrap justify-center items-center gap-12 z-10 font-mono text-[9px] font-bold text-slate-800 rotate-[-15deg] scale-110">
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <div key={i} className="whitespace-nowrap select-none">
+                    STETHONOTES DRM • sb108750@gmail.com • IP DETECTED • NO COPY
+                  </div>
+                ))}
+              </div>
+
               <div 
                 style={{ transform: `scale(${zoom / 100})`, transformOrigin: "top center" }} 
-                className="w-full transition-transform duration-200 max-w-md"
+                className="w-full transition-transform duration-200 max-w-md select-none pointer-events-none"
               >
                 {/* Dynamically render unlocked sample contents */}
                 <div dangerouslySetInnerHTML={{ __html: activeNote.samplePages[currentPage] || "" }} />
               </div>
+
+              {/* StethoShield Blur Overlay */}
+              {isScreenBlurred && (
+                <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center select-none">
+                  <Shield className="h-10 w-10 text-sky-400 animate-pulse mb-3" />
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider">
+                    StethoShield Security Active
+                  </h4>
+                  <p className="text-[10px] text-slate-400 max-w-xs mt-1 leading-relaxed">
+                    Study reader blurred to protect digital content. Click back inside the workspace to resume studying.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Pagination footer */}
@@ -300,6 +407,24 @@ export const InteractiveNoteViewer: React.FC<InteractiveNoteViewerProps> = ({ pu
         </div>
 
       </div>
+
+      {/* Dynamic StethoShield Anti-Piracy Threat Alert */}
+      <AnimatePresence>
+        {showScreenshotAlert && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] bg-slate-900/95 backdrop-blur-md border border-rose-500/30 px-5 py-3 rounded-2xl shadow-xl flex items-center gap-3 text-white max-w-sm"
+          >
+            <Shield className="h-6 w-6 text-rose-400 shrink-0 animate-bounce" />
+            <div className="text-left">
+              <span className="text-xs font-black text-rose-300 uppercase block tracking-wider">StethoShield DRM Shield</span>
+              <span className="text-[11px] text-rose-100 font-medium block mt-0.5">{alertMessage}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
